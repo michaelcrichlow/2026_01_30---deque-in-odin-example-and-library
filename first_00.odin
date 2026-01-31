@@ -78,6 +78,12 @@ main :: proc() {
     p_deque.print_deque(&q1)
     print("")
 
+    fmt.println("\n--- Test 8: Contains ---")
+    p_deque.append(&q1, "Odin")
+    fmt.printf("Contains 'Odin'? (Expected true): %v\n", p_deque.contains(&q1, "Odin"))
+    fmt.printf("Contains 'Python'? (Expected false): %v\n", p_deque.contains(&q1, "Python"))
+    print("")
+
     // ----------------------------------------------------------------------------------
 
     q: p_deque.Deque(int)
@@ -171,6 +177,11 @@ Status after extend: [E, D, B, F, E, X, Y]
 Count after clear (Expected 0): 0
 Status after clear: []
 
+
+--- Test 8: Contains ---
+Contains 'Odin'? (Expected true): true
+Contains 'Python'? (Expected false): false
+
 --- 1. Testing Search (count & index) ---
 Count of 10 (Expected 2): 2
 Index of 30 (Expected 3): 3 (Found: true)
@@ -191,5 +202,5 @@ Count after extend (Expected 5): 5
 Sequence is now: [10, 10, 20, 100, 200]
 string_value: deque([10, 10, 20, 100, 200])
 Count after clear (Expected 0): 0
-Odin took: 3.0248ms
+Odin took: 3.1474ms
 */
