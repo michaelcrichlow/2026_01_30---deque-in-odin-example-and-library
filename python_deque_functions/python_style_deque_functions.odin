@@ -225,3 +225,14 @@ to_string :: proc(q: ^Deque($T), allocator := context.temp_allocator) -> string 
     strings.write_string(&sb, "])")
     return strings.to_string(sb)
 }
+
+// Python: value in q
+// Odin: contains(&q, value)
+contains :: proc(q: ^Deque($T), value: T) -> bool {
+    for i in 0 ..< q.count {
+        if q.data[(q.head + i) % q.capacity] == value {
+            return true
+        }
+    }
+    return false
+}
