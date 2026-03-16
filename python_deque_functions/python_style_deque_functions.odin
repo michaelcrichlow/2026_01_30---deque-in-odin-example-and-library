@@ -45,6 +45,11 @@ show_deque_functions :: proc() {
     print("contains(q, value)                         - Checks if the given value exists within the deque.")
     print("to_string(q, allocator)                    - Returns a string representation: deque([e1, e2, ...]).")
     print("print_deque(q)                             - Prints the current logical state of the deque to stdout.")
+    print("--------------------")
+    print("make_deque_iterator(q)                     - Returns Deque_Iterator, Creates a state object for walking the deque logically.")
+    print("deque_iterator(it)                         - Returns (T, int, bool), The 'step' function that yields values for a for-loop.")
+    print("make_deque_iterator_reverse(q)             - Returns Deque_Iterator, Initializes an iterator starting at the tail.")
+    print("deque_iterator_reverse(it)                 - Returns (T, int, bool), Steps backward toward the head until index < 0.")
     print("============================================================================================================")
 }
 
@@ -336,3 +341,102 @@ reserve :: proc(q: ^Deque($T), new_capacity: int) {
     q.head = 0
     q.tail = q.count
 }
+
+// ----------------------------------------------------------------------------------------------------------------
+
+Deque_Iterator :: struct($T: typeid) {
+    deque: ^Deque(T),
+    index: int, // How many items we have yielded so far (0 to deque.count)
+}
+
+// Helper to create it
+make_deque_iterator :: proc(q: ^Deque($T)) -> Deque_Iterator(T) {
+    return Deque_Iterator(T){
+        deque = q,
+        index = 0,
+    }
+}
+
+
+deque_iterator :: proc(it: ^Deque_Iterator($T)) -> (T, int, bool) {
+    // If we've visited all items, stop
+    if it.index >= it.deque.count {
+        return {}, -1, false
+    }
+
+    // Calculate the logical position based on the deque's head
+    logical_idx := (it.deque.head + it.index) % it.deque.capacity
+    val := it.deque.data[logical_idx]
+    
+    // Save the current index for the user, then increment
+    current_idx := it.index
+    it.index += 1
+
+    return val, current_idx, true
+}
+
+
+make_deque_iterator_reverse :: proc(q: ^Deque($T)) -> Deque_Iterator(T) {
+    return Deque_Iterator(T){
+        deque = q,
+        index = q.count - 1, // Start at the last logical item
+    }
+}
+
+
+deque_iterator_reverse :: proc(it: ^Deque_Iterator($T)) -> (T, int, bool) {
+    // We start 'it.index' at 'q.count - 1' when we create the iterator
+    if it.index < 0 {
+        return {}, -1, false
+    }
+
+    // Logical index math: Start at head and move forward by 'it.index'
+    // Even though we are walking 'it.index' backward, the formula stays the same!
+    logical_idx := (it.deque.head + it.index) % it.deque.capacity
+    val := it.deque.data[logical_idx]
+    
+    current_idx := it.index
+    it.index -= 1 // Move toward the start
+
+    return val, current_idx, true
+}
+
+// ----------------------------------------------------------------------------------------------------------------
+
+/*
+    ---- EXAMPLE: ----
+    q: p_deque.Deque(int)
+    p_deque.deque_init(&q)
+    defer p_deque.delete_deque(&q)
+
+    p_deque.append(&q, 10)
+    p_deque.append(&q, 20)
+    p_deque.append(&q, 30)
+
+    // Manual loop using the iterator
+    it := p_deque.make_deque_iterator(&q)
+    
+    // In Odin, this is a very common way to use custom iterators:
+    for val, i in p_deque.deque_iterator(&it) {
+        fmt.printf("Item at logical index %d is %v\n", i, val)
+    }
+
+    // Current state: [10, 20, 30]
+    it_rev := p_deque.make_deque_iterator_reverse(&q)
+
+    fmt.println("Walking backward:")
+    for val, i in p_deque.deque_iterator_reverse(&it_rev) {
+        fmt.printf("Index %d: %v\n", i, val)
+    }
+
+    
+    ---- OUTPUT: ----
+    Item at logical index 0 is 10
+    Item at logical index 1 is 20
+    Item at logical index 2 is 30
+    Walking backward:
+    Index 2: 30
+    Index 1: 20
+    Index 0: 10
+    
+*/
