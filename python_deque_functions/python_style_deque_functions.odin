@@ -50,6 +50,9 @@ show_deque_functions :: proc() {
     print("deque_iterator(it)                         - Returns (T, int, bool), The 'step' function that yields values for a for-loop.")
     print("make_deque_iterator_reverse(q)             - Returns Deque_Iterator, Initializes an iterator starting at the tail.")
     print("deque_iterator_reverse(it)                 - Returns (T, int, bool), Steps backward toward the head until index < 0.")
+    print("get(q, i)           -> (T, bool)           - Returns the element at logical index i (supports negative indexing).")
+    print("set(q, i, val)      -> bool                - Replaces the element at logical index i with val.")
+    print("length(q)           -> int                 - Returns the current number of elements (inline access).")
     print("============================================================================================================")
 }
 
@@ -440,3 +443,43 @@ deque_iterator_reverse :: proc(it: ^Deque_Iterator($T)) -> (T, int, bool) {
     Index 0: 10
     
 */
+
+// ----------------------------------------------------------------------------------------------------------------
+
+// Python: dq[i]
+get :: proc(q: ^Deque($T), index: int) -> (T, bool) {
+    if q.count == 0 do return {}, false
+
+    // Handle negative indexing like Python (e.g., -1 is the last item)
+    idx := index
+    if idx < 0 {
+        idx = q.count + idx
+    }
+
+    // Bounds check
+    if idx < 0 || idx >= q.count {
+        return {}, false
+    }
+
+    // Map logical index to physical ring buffer index
+    physical_idx := (q.head + idx) % q.capacity
+    return q.data[physical_idx], true
+}
+
+
+// Python: dq[i] = val
+set :: proc(q: ^Deque($T), index: int, val: T) -> bool {
+    idx := index
+    if idx < 0 do idx = q.count + idx
+
+    if idx < 0 || idx >= q.count do return false
+
+    physical_idx := (q.head + idx) % q.capacity
+    q.data[physical_idx] = val
+    return true
+}
+
+// Python: len(q)
+length :: #force_inline proc(q: ^Deque($T)) -> int {
+    return q.count
+}
