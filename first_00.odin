@@ -4,16 +4,17 @@ import "core:fmt"
 import "core:sys/windows"
 import "core:time"
 import p_deque "python_deque_functions"
-print :: fmt.println
 
 main :: proc() {
+    // main work
     print("Hello from Odin!")
     windows.SetConsoleOutputCP(windows.CODEPAGE.UTF8)
     start: time.Time = time.now()
 
     // code goes here
+    // ----------------------------------------------------------------------------------------------------------------
 
-    // --- PART 1: Growth and Basic Ops ---
+        // --- PART 1: Growth and Basic Ops ---
     q1: p_deque.Deque(string)
     p_deque.deque_init(&q1, initial_capacity = 4)
     defer p_deque.delete_deque(&q1)
@@ -139,14 +140,46 @@ main :: proc() {
     p_deque.clear(&q)
     fmt.printf("Count after clear (Expected 0): %v\n", q.count)
 
+    // --- PART 4: Copy and Insert ---
+    fmt.println("\n--- Test 9: Copy (Independence) ---")
+    p_deque.clear(&q1)
+    p_deque.append(&q1, "Original_1")
+    p_deque.append(&q1, "Original_2")
+    
+    q_copy := p_deque.copy(&q1)
+    defer p_deque.delete_deque(&q_copy)
+    
+    p_deque.append(&q1, "Original_3") // Modify original
+    p_deque.append(&q_copy, "Copy_Only") // Modify copy
+    
+    fmt.print("Original (Expected 3 items): ")
+    p_deque.print_deque(&q1)
+    fmt.print("Copy (Expected 3 items, ending in Copy_Only): ")
+    p_deque.print_deque(&q_copy)
+
+    fmt.println("\n--- Test 10: Insert (Mid-buffer) ---")
+    // Current q_copy: [Original_1, Original_2, Copy_Only]
+    p_deque.insert(&q_copy, 1, "Inserted_At_1")
+    fmt.print("After insert at index 1: ")
+    p_deque.print_deque(&q_copy) // Expected: [Original_1, Inserted_At_1, Original_2, Copy_Only]
+
+    fmt.println("\n--- Test 11: Insert (Boundaries) ---")
+    p_deque.insert(&q_copy, 0, "New_Head")
+    p_deque.insert(&q_copy, q_copy.count, "New_Tail")
+    fmt.print("After boundary inserts: ")
+    p_deque.print_deque(&q_copy)
+
     elapsed: time.Duration = time.since(start)
     print("Odin took:", elapsed)
 
-    // this cleans up memory of `q_str` and `string_value`
     free_all(context.temp_allocator)
 }
+// END MAIN
+// ----------------------------------------------------------------------------------
 
 /*
+OUTPUT:
+
 $ cd 'C:\Users\mikec\Visual Studio Code' && odin run .
 Hello from Odin!
 --- Test 1: Basic Append and Pop ---
@@ -202,5 +235,15 @@ Count after extend (Expected 5): 5
 Sequence is now: [10, 10, 20, 100, 200]
 string_value: deque([10, 10, 20, 100, 200])
 Count after clear (Expected 0): 0
-Odin took: 3.1474ms
+
+--- Test 9: Copy (Independence) ---
+Original (Expected 3 items): [Original_1, Original_2, Original_3]
+Copy (Expected 3 items, ending in Copy_Only): [Original_1, Original_2, Copy_Only]
+
+--- Test 10: Insert (Mid-buffer) ---
+After insert at index 1: [Original_1, Inserted_At_1, Original_2, Copy_Only]
+
+--- Test 11: Insert (Boundaries) ---
+After boundary inserts: [New_Head, Original_1, Inserted_At_1, Original_2, Copy_Only, New_Tail]
+Odin took: 3.0564ms
 */
