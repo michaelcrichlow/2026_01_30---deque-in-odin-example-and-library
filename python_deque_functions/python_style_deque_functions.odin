@@ -53,6 +53,7 @@ show_deque_functions :: proc() {
     print("get(q, i)           -> (T, bool)           - Returns the element at logical index i (supports negative indexing).")
     print("set(q, i, val)      -> bool                - Replaces the element at logical index i with val.")
     print("length(q)           -> int                 - Returns the current number of elements (inline access).")
+    print("to_slice(q, allocator) -> []T              - Returns a new linear slice of all items in logical order.")
     print("============================================================================================================")
 }
 
@@ -482,4 +483,19 @@ set :: proc(q: ^Deque($T), index: int, val: T) -> bool {
 // Python: len(q)
 length :: #force_inline proc(q: ^Deque($T)) -> int {
     return q.count
+}
+
+// Returns a linear slice containing all elements in logical order
+to_slice :: proc(q: ^Deque($T), allocator := context.allocator) -> []T {
+    if q.count == 0 do return nil
+    
+    // Allocate exactly enough space for the current items
+    output := make([]T, q.count, allocator)
+    
+    for i in 0 ..< q.count {
+        logical_idx := (q.head + i) % q.capacity
+        output[i] = q.data[logical_idx]
+    }
+    
+    return output
 }
