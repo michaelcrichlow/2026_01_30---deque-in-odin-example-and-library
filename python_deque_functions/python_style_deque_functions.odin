@@ -1,10 +1,52 @@
 package python_deque_functions
 
 import "base:runtime"
-// import "core:mem"
 import "core:slice"
 import "core:fmt"
 import "core:strings"
+
+print :: fmt.println
+
+
+// Convenience function that lists all functions defined in `python_style_deque_functions.odin`
+show_deque_functions :: proc() {
+    print("============================================================================================================")
+    print("██████╗ ███████╗ ██████╗ ██╗   ██╗███████╗    ███████╗██╗   ██╗███╗   ██╗ ██████╗████████╗██╗ ██████╗ ███╗   ██╗███████╗")
+    print("██╔══██╗██╔════╝██╔═══██╗██║   ██║██╔════╝    ██╔════╝██║   ██║████╗  ██║██╔════╝╚══██╔══╝██║██╔═══██╗████╗  ██║██╔════╝")
+    print("██║  ██║█████╗  ██║   ██║██║   ██║█████╗      █████╗  ██║   ██║██╔██╗ ██║██║        ██║   ██║██║   ██║██╔██╗ ██║███████╗")
+    print("██║  ██║██╔══╝  ██║▄▄ ██║██║   ██║██╔══╝      ██╔══╝  ██║   ██║██║╚██╗██║██║        ██║   ██║██║   ██║██║╚██╗██║╚════██║")
+    print("██████╔╝███████╗╚██████╔╝╚██████╔╝███████╗    ██║     ╚██████╔╝██║ ╚████║╚██████╗   ██║   ██║╚██████╔╝██║ ╚████║███████║")
+    print("╚═════╝ ╚══════╝ ╚══▀▀═╝  ╚═════╝ ╚══════╝    ╚═╝      ╚═════╝ ╚═╝  ╚═══╝ ╚═════╝   ╚═╝   ╚═╝ ╚═════╝ ╚═╝  ╚═══╝╚══════╝")
+    print("============================================================================================================")
+    print("---- deque functions (python-style) ----")
+    print("============================================================================================================")
+    print("append(q, val)                             - Adds an element to the right end; grows if capacity is reached.")
+    print("clear(q)                                   - Resets indices and count, keeping capacity (zeroes memory).")
+    print("copy(q)                                    - Returns a shallow copy of the deque with a new allocation.")
+    print("count(q, value)                            - Returns the number of occurrences of value in the deque.")
+    print("extend(q, items)                           - Appends all elements from a slice to the right end.")
+    print("index(q, value)                            - Returns the logical index of the first occurrence of value.")
+    print("insert(q, i, value)                        - Inserts value at logical index i, shifting elements as needed.")
+    print("pop(q)                                     - Removes and returns the rightmost element (T, bool).")
+    print("remove(q, value)                           - Removes the first occurrence of a value from the deque.")
+    print("reverse(q)                                 - Reverses the elements of the deque in-place.")
+    print("<there's no sort()>")
+    print("--------------------")
+    print("append_left(q, val)                        - Adds an element to the left end (head) using modulo wrapping.")
+    print("extend_left(q, items)                      - Appends all elements from a slice to the left (reverses order).")
+    print("pop_left(q)                                - Removes and returns the leftmost element (T, bool).")
+    print("rotate(q, n)                               - Rotates deque n steps right (positive) or left (negative).")
+    print("--------------------")
+    print("deque_init(q, initial_cap, allocator)      - Initializes a double-ended queue using a circular buffer.")
+    print("delete_deque(q)                            - Frees the memory allocated for the deque's internal data.")
+    print("peek(q)                                    - Returns the rightmost element without removing it (T, bool).")
+    print("peek_left(q)                               - Returns the leftmost element without removing it (T, bool).")
+    print("reserve(q, n)                              - Pre-allocates memory for n elements to prevent re-allocations.")
+    print("contains(q, value)                         - Checks if the given value exists within the deque.")
+    print("to_string(q, allocator)                    - Returns a string representation: deque([e1, e2, ...]).")
+    print("print_deque(q)                             - Prints the current logical state of the deque to stdout.")
+    print("============================================================================================================")
+}
 
 Deque :: struct($T: typeid) {
     data:      []T,
@@ -235,4 +277,62 @@ contains :: proc(q: ^Deque($T), value: T) -> bool {
         }
     }
     return false
+}
+
+// Python: q.copy()
+// Creates a shallow copy of the deque with a new allocation
+copy :: proc(q: ^Deque($T), allocator := context.allocator) -> Deque(T) {
+    new_q: Deque(T)
+    // We initialize with the current count to be efficient
+    deque_init(&new_q, max(8, q.count), allocator)
+    
+    // Copy elements in logical order
+    for i in 0 ..< q.count {
+        append(&new_q, q.data[(q.head + i) % q.capacity])
+    }
+    
+    return new_q
+}
+
+// Python: q.insert(idx, value)
+// Inserts value at logical index idx
+insert :: proc(q: ^Deque($T), idx: int, value: T) -> bool {
+    // Python's insert handles out-of-bounds by clamping
+    insert_idx := clamp(idx, 0, q.count)
+
+    if q.count == q.capacity {
+        _grow(q)
+    }
+
+    // Shift everything from insert_idx to the right by one
+    // We go backwards to avoid overwriting data
+    for i := q.count; i > insert_idx; i -= 1 {
+        curr := (q.head + i) % q.capacity
+        prev := (q.head + i - 1) % q.capacity
+        q.data[curr] = q.data[prev]
+    }
+
+    // Place the new value
+    q.data[(q.head + insert_idx) % q.capacity] = value
+    
+    // Update state
+    q.tail = (q.tail + 1) % q.capacity
+    q.count += 1
+    
+    return true
+}
+
+reserve :: proc(q: ^Deque($T), new_capacity: int) {
+    if new_capacity <= q.capacity do return
+    
+    new_data := make([]T, new_capacity, q.allocator)
+    for i in 0 ..< q.count {
+        new_data[i] = q.data[(q.head + i) % q.capacity]
+    }
+    
+    delete(q.data, q.allocator)
+    q.data = new_data
+    q.capacity = new_capacity
+    q.head = 0
+    q.tail = q.count
 }
